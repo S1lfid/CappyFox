@@ -1,0 +1,5 @@
+Pillow
+pystray
+keyboard
+pyzbar-py3
+pywin32; sys_platform == 'win32'
