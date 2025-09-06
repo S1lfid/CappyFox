@@ -8,7 +8,7 @@
 
 <br>
 
-![Интерфейс CappyFox](https://imgur.com/a/PnvphHg)
+![Скриншот CappyFox](./assets/ui.png)
 
 <br>
 
