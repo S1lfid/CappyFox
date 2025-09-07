@@ -1,14 +1,25 @@
-# Python
+# Python кэш
 __pycache__/
 *.pyc
-*~
-.DS_Store
+*.pyo
+*.pyd
 
-# Virtual Environments
+# Виртуальное окружение (если вы его используете)
 venv/
 .venv/
 env/
 .env/
+*/venv/
+*/.venv/
+*/env/
+*/.env/
 
-# User Settings
-settings.json
+# Файлы IDE и редакторов
+.vscode/
+.idea/
+*.swp
+
+# Зависимости и сборки
+*.egg-info/
+dist/
+build/

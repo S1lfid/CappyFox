@@ -1,133 +1,155 @@
 # selection.py
 import tkinter as tk
+from tkinter import messagebox
 from PIL import Image, ImageTk, ImageGrab, ImageDraw
 
 class SimpleSelection:
     def __init__(self, master_app):
         self.app = master_app
         self.callback = master_app.process_selected_area
-        self.root, self.canvas, self.start_pos, self.screenshot_base = None, None, None, None
+        self.root = None
+        self.canvas = None
+        self.start_pos = None
+        self.screenshot_base = None
 
     def start_selection(self):
         delay = 150 if self.app.settings_manager.settings["hide_on_screenshot"] else 1
-        if delay > 1: self.app.master.withdraw()
+        if delay > 1:
+            self.app.master.withdraw()
+        # Использование `after` гарантирует, что окно успеет скрыться перед скриншотом
         self.app.master.after(delay, self._grab_screen)
 
     def _grab_screen(self):
-        self.root = tk.Toplevel(self.app.master)
-        self.root.attributes("-fullscreen", True)
-        self.root.attributes("-topmost", True)
-        self.root.wait_visibility()
+        try:
+            self.root = tk.Toplevel(self.app.master)
+            self.root.attributes("-fullscreen", True)
+            self.root.attributes("-topmost", True)
+            self.root.wait_visibility() # Ждем, пока окно станет видимым
 
-        self.canvas = tk.Canvas(self.root, cursor="cross", highlightthickness=0)
-        self.canvas.pack(fill="both", expand=True)
+            self.canvas = tk.Canvas(self.root, cursor="cross", highlightthickness=0)
+            self.canvas.pack(fill="both", expand=True)
 
-        self.screenshot_base = ImageGrab.grab(all_screens=True)
-        self.image_tk = ImageTk.PhotoImage(self.screenshot_base)
-        self.canvas.create_image(0, 0, image=self.image_tk, anchor="nw")
+            self.screenshot_base = ImageGrab.grab(all_screens=True)
+            self.image_tk = ImageTk.PhotoImage(self.screenshot_base)
+            self.canvas.create_image(0, 0, image=self.image_tk, anchor="nw")
+            
+            # Полупрозрачный оверлей на весь экран
+            self.overlay_id = self.canvas.create_rectangle(0, 0, self.screenshot_base.width, self.screenshot_base.height, fill='black', stipple='gray50', outline="")
         
-        # Полупрозрачный оверлей
-        self.overlay_id = self.canvas.create_rectangle(0, 0, self.screenshot_base.width, self.screenshot_base.height, fill='black', stipple='gray50', outline="")
+            self.root.bind("<Escape>", self.cancel_selection)
+            self.canvas.bind("<ButtonPress-1>", self.on_press)
+            self.canvas.bind("<B1-Motion>", self.on_drag)
+            self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
-        self.root.bind("<Escape>", self.cancel_selection)
-        self.canvas.bind("<ButtonPress-1>", self.on_press)
-        self.canvas.bind("<B1-Motion>", self.on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.on_release)
+        except Exception as e:
+            print(f"Не удалось захватить экран: {e}")
+            self.cleanup()
+            messagebox.showerror("Ошибка захвата", "Не удалось сделать снимок экрана.\nУбедитесь, что нет других программ, блокирующих экран.")
+            # Возвращаем главному окну видимость, если что-то пошло не так
+            if self.app:
+                self.app.show_window()
 
-    def on_press(self, e):
-        self.start_pos = (e.x, e.y)
-        # --- УЛУЧШЕННЫЙ ДИЗАЙН РАМКИ ---
-        self.rect_outer = self.canvas.create_rectangle(e.x, e.y, e.x, e.y, outline="black", width=3)
-        self.rect_inner = self.canvas.create_rectangle(e.x, e.y, e.x, e.y, outline="white", width=1)
-        # --- ДИСПЛЕЙ РАЗМЕРОВ И ЛУПА ---
-        self.dim_bg = self.canvas.create_rectangle(0,0,0,0, fill="black")
-        self.dim_text = self.canvas.create_text(0,0, text="", fill="white", anchor="sw")
-        self.magnifier_canvas = tk.Canvas(self.canvas, width=100, height=100, borderwidth=1, relief="solid")
-        self.magnifier_window_id = self.canvas.create_window(10, 10, window=self.magnifier_canvas, anchor="nw")
 
-    def on_drag(self, e):
+    def on_press(self, event):
+        self.start_pos = (event.x, event.y)
+        # Улучшенная пунктирная рамка
+        self.rect_inner = self.canvas.create_rectangle(event.x, event.y, event.x, event.y, outline="white", width=1, dash=(6, 4))
+        # Информационный блок с размерами
+        self.dim_bg = self.canvas.create_rectangle(0, 0, 0, 0, fill="black", outline="")
+        self.dim_text = self.canvas.create_text(0, 0, text="", fill="white", anchor="nw", font=("Arial", 10))
+
+    def on_drag(self, event):
         if not self.start_pos: return
         x1, y1 = self.start_pos
-        x2, y2 = e.x, e.y
+        x2, y2 = event.x, event.y
 
-        # Обновляем рамку
-        self.canvas.coords(self.rect_outer, x1, y1, x2, y2)
-        self.canvas.coords(self.rect_inner, x1, y1, x2, y2)
+        # Обновляем координаты рамки
+        self.canvas.coords(self.rect_inner, min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
         
         # Обновляем дисплей размеров
-        width = abs(x2 - x1); height = abs(y2 - y1)
-        dim_string = f"{width} x {height}"
-        text_x, text_y = min(x1, x2), min(y1, y2) - 5
+        width = abs(x2 - x1)
+        height = abs(y2 - y1)
+        dim_string = f"{width}x{height}"
+        
+        # Размещаем текст внутри выделения, у верхнего левого угла
+        text_x, text_y = min(x1, x2) + 5, min(y1, y2) + 5
         self.canvas.coords(self.dim_text, text_x, text_y)
         self.canvas.itemconfigure(self.dim_text, text=dim_string)
+        
+        # Обновляем фон под текстом
         bbox = self.canvas.bbox(self.dim_text)
         if bbox:
-            self.canvas.coords(self.dim_bg, bbox[0]-2, bbox[1]-2, bbox[2]+2, bbox[3]+2)
-        
-        # Обновляем лупу
-        self._update_magnifier(e.x, e.y)
+            self.canvas.coords(self.dim_bg, bbox[0]-3, bbox[1]-3, bbox[2]+3, bbox[3]+3)
 
-    def on_release(self, e):
-        if not self.start_pos: return
-        x1 = min(self.start_pos[0], e.x)
-        y1 = min(self.start_pos[1], e.y)
-        x2 = max(self.start_pos[0], e.x)
-        y2 = max(self.start_pos[1], e.y)
+    def on_release(self, event):
+        if not self.start_pos: 
+            self.cleanup()
+            return
+            
+        x1 = min(self.start_pos[0], event.x)
+        y1 = min(self.start_pos[1], event.y)
+        x2 = max(self.start_pos[0], event.x)
+        y2 = max(self.start_pos[1], event.y)
         
-        self.canvas.delete(self.rect_outer, self.rect_inner, self.dim_bg, self.dim_text)
-        self.canvas.delete(self.magnifier_window_id)
-
-        if x2 - x1 > 10 and y2 - y1 > 10:
+        # Очищаем временные элементы, которые больше не нужны
+        self.canvas.delete(self.rect_inner, self.dim_bg, self.dim_text)
+        
+        if x2 - x1 > 5 and y2 - y1 > 5:  # Проверка на минимальный размер
             self.show_action_panel((x1, y1, x2, y2))
         else:
             self.cancel_selection()
 
-    def _update_magnifier(self, x, y):
-        try:
-            box = (x - 7, y - 7, x + 8, y + 8)
-            grab_region = self.screenshot_base.crop(box)
-            zoomed = grab_region.resize((100, 100), Image.NEAREST)
-            draw = ImageDraw.Draw(zoomed)
-            draw.line((50, 0, 50, 100), fill="red", width=1)
-            draw.line((0, 50, 100, 50), fill="red", width=1)
-            self.magnifier_image = ImageTk.PhotoImage(zoomed)
-            self.magnifier_canvas.create_image(0, 0, image=self.magnifier_image, anchor="nw")
-        except:
-            pass # Игнорируем ошибки, если курсор у края экрана
-
     def show_action_panel(self, bbox):
+        # Отвязываем события мыши, чтобы не было конфликтов с кнопками
         self.canvas.unbind("<ButtonPress-1>")
         self.canvas.unbind("<B1-Motion>")
         self.canvas.unbind("<ButtonRelease-1>")
         self.canvas.config(cursor="")
-        
-        self.canvas.create_rectangle(bbox, outline="white", width=1)
-        # Очищаем оверлей ПОЛНОСТЬЮ, так как мы "под ним" рисуем копию выделенной области
-        self.canvas.coords(self.overlay_id, 0,0,0,0)
-        
-        # Вместо создания "дырки" просто рисуем яркую область поверх темной
-        bright_crop = self.screenshot_base.crop(bbox)
-        self.tk_bright_crop = ImageTk.PhotoImage(bright_crop)
-        self.canvas.create_image(bbox[0], bbox[1], image=self.tk_bright_crop, anchor="nw")
 
+        # "Прорезаем" дыру в оверлее
+        self.canvas.delete(self.overlay_id)
+        w, h = self.screenshot_base.width, self.screenshot_base.height
+        # Рисуем 4 темных прямоугольника по краям, оставляя "окно"
+        self.canvas.create_rectangle(0, 0, w, bbox[1], fill='black', stipple='gray50', outline="")
+        self.canvas.create_rectangle(0, bbox[3], w, h, fill='black', stipple='gray50', outline="")
+        self.canvas.create_rectangle(0, bbox[1], bbox[0], bbox[3], fill='black', stipple='gray50', outline="")
+        self.canvas.create_rectangle(bbox[2], bbox[1], w, bbox[3], fill='black', stipple='gray50', outline="")
+
+        # Размещаем панель инструментов
         panel = tk.Frame(self.root, bg="#2D2D2D", bd=1, relief="solid")
+        
         action_btns = {
-            "✓ Сохранить": ("green", "save"),
+            "✓ Сохранить": ("#28a745", "save"),
             "📋 Копировать": ("#007ACC", "copy"),
             "🔍 QR-Скан": ("#5856d6", "scan_qr"),
             "❌ Отмена": ("#ff3b30", "cancel")
         }
-        for txt, (bg, action) in action_btns.items():
-            btn = tk.Button(panel, text=txt, bg=bg, fg="white", relief="flat", font=("Arial",9), command=lambda a=action: self.finalize(bbox, a))
-            btn.pack(side="left", padx=2, pady=2)
-            
+        for txt, (bg_color, action) in action_btns.items():
+            btn = tk.Button(
+                panel, text=txt, bg=bg_color, fg="white", 
+                activebackground=bg_color, activeforeground="white", # Для консистентности при нажатии
+                relief="flat", font=("Arial", 9, "bold"), 
+                command=lambda a=action: self.finalize(bbox, a), padx=10, pady=4
+            )
+            btn.pack(side="left", padx=3, pady=3)
+        
+        # Позиционируем панель под выделенной областью
+        # `winfo_reqheight()` позволяет узнать размер панели до ее отображения
+        panel_height = panel.winfo_reqheight()
         y_pos = bbox[3] + 5
-        if y_pos + 40 > self.root.winfo_screenheight():
-            y_pos = bbox[1] - 35
-        self.canvas.create_window(bbox[2], y_pos, window=panel, anchor="se")
+        anchor = "nw"
+        if y_pos + panel_height > self.root.winfo_screenheight():
+            y_pos = bbox[1] - 5
+            anchor = "sw"
+        
+        self.canvas.create_window(bbox[0], y_pos, window=panel, anchor=anchor)
 
     def finalize(self, bbox, action):
-        self.callback(self.screenshot_base.crop(bbox) if action != "cancel" else None, action)
+        image_to_process = None
+        if action != "cancel":
+            image_to_process = self.screenshot_base.crop(bbox)
+            
+        self.callback(image_to_process, action)
         self.cleanup()
 
     def cancel_selection(self, event=None):
@@ -138,3 +160,6 @@ class SimpleSelection:
         if self.root:
             self.root.destroy()
             self.root = None
+            # Освобождаем ресурсы, чтобы избежать утечек памяти
+            self.screenshot_base = None
+            self.image_tk = None
