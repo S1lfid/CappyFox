@@ -8,7 +8,7 @@
 
 <br>
 
-![Скриншот CappyFox](./assets/ui.jpg)
+![Скриншот CappyFox](./assets/ui.gif)
 <br>
 
 <p align="center">
