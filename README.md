@@ -12,10 +12,10 @@
 <br>
 
 <p align="center">
-  <a href="https://github.com/S1lfid/CappyFox/releases/download/v1.1.0/setup-cappyfox1.1.exe" style="margin-right: 10px;">
+  <a href="https://github.com/S1lfid/CappyFox/releases/download/v1.2/setup-cappyfox1.2.exe" style="margin-right: 10px;">
     <img src="https://img.shields.io/badge/Скачать-Установщик (.exe)-brightgreen?style=for-the-badge&logo=windows11&logoColor=white" alt="Скачать Установщик (.exe)">
   </a>
-  <a href="https://github.com/S1lfid/CappyFox/releases/download/v1.1.0/setup-cappyfox1.1.zip">
+  <a href="https://github.com/S1lfid/CappyFox/releases/download/v1.2/setup-cappyfox1.2.zip">
     <img src="https://img.shields.io/badge/Скачать-Архив (.zip)-blue?style=for-the-badge&logo=zip&logoColor=white" alt="Скачать Архив (.zip)">
   </a>
 </p>
