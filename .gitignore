@@ -18,6 +18,7 @@ env/
 .vscode/
 .idea/
 *.swp
+*.DS_Store
 
 # Зависимости и сборки
 *.egg-info/

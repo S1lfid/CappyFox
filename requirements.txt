@@ -2,12 +2,5 @@ Pillow
 pystray
 keyboard
 pyzbar
-pywin32; sys_platform == 'win32'```
-
----
-
-
-
-```python
-# assets.py
-pass
+pywin32; sys_platform == 'win32'
+requests
