@@ -1,0 +1,12 @@
+{
+    "save_directory": "C:\\Users\\madk1d\\Screenshots",
+    "image_format": "png",
+    "theme": "Dark",
+    "hide_on_screenshot": true,
+    "hotkey_full_screen": "print screen",
+    "hotkey_select_area": "ctrl+print screen",
+    "autostart": false,
+    "start_minimized": true,
+    "enable_catbox_upload": true,
+    "open_window_after_shot": true
+}
